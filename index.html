@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+  <meta charset="UTF-8" />
+  <title>Приключение с Компаньони</title>
+  <style>
+    body {
+      margin: 0; font-family: 'Comic Sans MS', cursive;
+      background: linear-gradient(to bottom, #e0f7fa, #fff3e0);
+      color: #333; text-align: center; padding: 20px;
+    }
+    header {
+      background-color: #f8bbd0;
+      padding: 20px; font-size: 28px; color: #4a148c;
+      margin-bottom: 20px;
+    }
+    button {
+      cursor: pointer;
+      border-radius: 12px;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 18px;
+      background: #ce93d8;
+      color: white;
+      transition: background 0.3s;
+    }
+    button:hover:not(:disabled) { background: #ba68c8; }
+    button:disabled { background: #eee; cursor: not-allowed; }
+    #heroImage {
+      width: 100px; margin: 10px auto;
+      animation: bounce 2s infinite; display: none;
+    }
+    @keyframes bounce {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    #hatchBtn {
+      background: #ffcc80;
+      font-size: 20px;
+      border-radius: 15px;
+    }
+    #eggTimer { font-size: 20px; margin-top: 15px; }
+    #companions-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 20px;
+      background: #fff8e1;
+      border-radius: 10px;
+      padding: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .companion {
+      margin-bottom: 10px;
+      animation: fadeIn 1s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    #notification {
+      position: fixed;
+      bottom: 20px; left: 50%;
+      transform: translateX(-50%);
+      background: #4caf50; color: white;
+      padding: 15px 30px; border-radius: 25px;
+      font-size: 18px;
+      display: none;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+      z-index: 1100;
+    }
+  </style>
+</head>
+<body>
+  <header>🐾 Избери герой и събирай Компаньони 🐣</header>
+  <div id="game">
+    <div id="heroSelect">
+      <p>Избери своя герой:</p>
+      <button onclick="chooseHero('Духче')">👻 Духче</button>
+      <button onclick="chooseHero('Бамби')">🦌 Бамби</button>
+    </div>
+    <div id="chosenHero" style="font-size: 22px; margin: 20px;"></div>
+    <img id="heroImage" alt="Герой" />
+    <div id="eggTimer">Следващо яйце след: <span id="countdown">30:00</span></div>
+    <button id="hatchBtn" onclick="hatchEgg()" disabled style="display:none;">Излюпи яйце 🐣</button>
+    <div id="companions-list"></div>
+  </div>
+
+  <div id="notification"></div>
+
+  <audio id="notificationSound" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" preload="auto"></audio>
+
+  <script>
+    const EGG_INTERVAL = 1800; // 30 минути в секунди
+    let hero = localStorage.getItem('hero') || null;
+    let companions = JSON.parse(localStorage.getItem('companions') || '[]');
+    let eggTimestamp = parseInt(localStorage.getItem('eggTimestamp') || '0');
+    let notified = false;
+
+    function updateTimer() {
+      const now = Math.floor(Date.now() / 1000);
+      let timeLeft = EGG_INTERVAL - (now - eggTimestamp);
+      if (timeLeft < 0) timeLeft = 0;
+
+      const minutes = Math.floor(timeLeft / 60);
+      const seconds = timeLeft % 60;
+      document.getElementById('countdown').innerText = `${minutes}:${seconds.toString().padStart(2,'0')}`;
+
+      const hatchBtn = document.getElementById('hatchBtn');
+      if (timeLeft === 0) {
+        hatchBtn.disabled = false;
+        hatchBtn.style.display = 'inline-block';
+        if (!notified) {
+          showNotification('Яйцето е готово за излюпване! 🐣');
+          playNotificationSound();
+          notified = true;
+        }
+      } else {
+        hatchBtn.disabled = true;
+        hatchBtn.style.display = 'none';
+        notified = false;
+      }
+    }
+
+    function showNotification(message) {
+      const notification = document.getElementById('notification');
+      notification.innerText = message;
+      notification.style.display = 'block';
+      setTimeout(() => notification.style.display = 'none', 4000);
+    }
+
+    function playNotificationSound() {
+      const sound = document.getElementById('notificationSound');
+      sound.play();
+    }
+
+    function chooseHero(name) {
+      if (hero) {
+        alert('Вече си избрал герой: ' + hero);
+        return;
+      }
+      hero = name;
+      localStorage.setItem('hero', hero);
+      document.getElementById('chosenHero').innerText = 'Избраният герой е: ' + hero;
+      document.getElementById('heroSelect').style.display = 'none';
+
+      const heroImg = document.getElementById('heroImage');
+      heroImg.src = hero === 'Духче' ? 'https://cdn-icons-png.flaticon.com/512/446/446300.png' : 'https://cdn-icons-png.flaticon.com/512/616/616408.png';
+      heroImg.style.display = 'block';
+
+      if (!eggTimestamp) {
+        eggTimestamp = Math.floor(Date.now() / 1000);
+        localStorage.setItem('eggTimestamp', eggTimestamp);
+      }
+
+      updateTimer();
+    }
+
+    function hatchEgg() {
+      if (document.getElementById('hatchBtn').disabled) return;
+
+      // Добавяме произволен компаньон
+      const companionId = Math.floor(Math.random() * 100) + 1;
+      companions.push(`Компаньон #${companionId}`);
+      localStorage.setItem('companions', JSON.stringify(companions));
+
+      displayCompanions();
+
+      // Ресетваме таймера
+      eggTimestamp = Math.floor(Date.now() / 1000);
+      localStorage.setItem('eggTimestamp', eggTimestamp);
+      updateTimer();
+    }
+
+    function displayCompanions() {
+      const list = document.getElementById('companions-list');
+      list.innerHTML = '<h3>Твоите компаньони:</h3>';
+      if (companions.length === 0) {
+        list.innerHTML += '<p>Все още нямаш компаньони. Излюпи яйце!</p>';
+        return;
+      }
+      companions.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'companion';
+        div.textContent = c;
+        list.appendChild(div);
+      });
+    }
+
+    // Зареждане при стартиране
+    window.onload = () => {
+      if (hero) {
+        document.getElementById('chosenHero').innerText = 'Избраният герой е: ' + hero;
+        document.getElementById('heroSelect').style.display = 'none';
+
+        const heroImg = document.getElementById('heroImage');
+        heroImg.src = hero === 'Духче' ? 'https://cdn-icons-png.flaticon.com/512/446/446300.png' : 'https://cdn-icons-png.flaticon.com/512/616/616408.png';
+        heroImg.style.display = 'block';
+      }
+      displayCompanions();
+      updateTimer();
+      setInterval(updateTimer, 1000);
+    };
+  </script>
+</body>
+</html>
